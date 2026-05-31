@@ -5,7 +5,7 @@ import { LibSQLStore } from "@mastra/libsql";
 import { PinoLogger } from "@mastra/loggers";
 import { DefaultExporter, Observability } from "@mastra/observability";
 import { inboxTriageWorkflow } from "./workflows/inbox-triage.workflow";
-import { sponsorResearchWorkflow, sponsorTriageWorkflow } from "./workflows/sponsor-triage.workflow";
+import { sponsorTriageWorkflow } from "./workflows/sponsor-triage.workflow";
 import { classifyEmailScorer } from "./scorers/classify-email.scorer";
 import { sponsorDetailsScorer } from "./scorers/sponsor-details.scorer";
 
@@ -13,7 +13,6 @@ export const mastra = new Mastra({
   workflows: {
     inboxTriageWorkflow,
     sponsorTriageWorkflow,
-    sponsorResearchWorkflow,
   },
   scorers: {
     classifyEmailScorer,

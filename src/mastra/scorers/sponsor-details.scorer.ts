@@ -1,5 +1,5 @@
 import { createScorer } from "@mastra/core/evals";
-import { sponsorDetailsSchema, type NormalizedEmail, type SponsorDetails } from "../../lib/schemas";
+import { parentWorkflowOutputSchema, sponsorDetailsSchema, type NormalizedEmail, type SponsorDetails } from "../../lib/schemas";
 import { sponsorIntentEnvelopeSchema } from "../steps/verify-sponsor-intent.step";
 
 type Analysis = {
@@ -19,9 +19,10 @@ export function parseSponsorDetailsScorerRun(run: { input?: unknown; output?: un
 } {
   const input = sponsorIntentEnvelopeSchema.safeParse(run.input);
   const output = sponsorDetailsScorerOutputSchema.safeParse(run.output);
+  const parentOutput = parentWorkflowOutputSchema.safeParse(run.output);
   return {
     input: input.success ? input.data.normalizedEmail : null,
-    output: output.success ? output.data.sponsorDetails : null,
+    output: output.success ? output.data.sponsorDetails : parentOutput.success ? parentOutput.data.sponsorBrief?.sponsorDetails ?? null : null,
   };
 }
 
@@ -31,7 +32,7 @@ export const sponsorDetailsScorer = createScorer({
   description: "Checks extraction completeness and catches invented budget, customers, case studies, or proof.",
   type: {
     input: sponsorIntentEnvelopeSchema,
-    output: sponsorDetailsScorerOutputSchema,
+    output: parentWorkflowOutputSchema.or(sponsorDetailsScorerOutputSchema),
   },
 })
   .preprocess(({ run }) => parseSponsorDetailsScorerRun(run))

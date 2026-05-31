@@ -91,7 +91,7 @@ After running a workflow through Studio or the API, open the Studio **Traces** v
 curl http://localhost:4111/api/observability/traces
 ```
 
-The demo registers the parent workflow, sponsor child workflow, and sponsor research workflow so nested workflow and scorer spans can resolve cleanly in traces.
+The demo registers only the parent inbox workflow and the sponsor child workflow, keeping the Studio workflow list aligned with the teaching story.
 
 ## Scorers
 
