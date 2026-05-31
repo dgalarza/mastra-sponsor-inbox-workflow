@@ -148,8 +148,8 @@ export const parentWorkflowOutputSchema = z.object({
 export type ParentWorkflowOutput = z.infer<typeof parentWorkflowOutputSchema>;
 
 export const workflowStateSchema = z.object({
-  normalizedEmail: normalizedEmailSchema.nullable(),
-  classification: classificationSchema.nullable(),
-  sponsorDetails: sponsorDetailsSchema.nullable(),
-  externalCorroboration: externalCorroborationSchema.nullable(),
+  normalizedEmail: normalizedEmailSchema.nullable().default(null),
+  classification: classificationSchema.nullable().default(null),
+  sponsorDetails: sponsorDetailsSchema.nullable().default(null),
+  externalCorroboration: externalCorroborationSchema.nullable().default(null),
 });
