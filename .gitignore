@@ -3,3 +3,4 @@
 mastra.db*
 node_modules
 dist
+mastra-observability.duckdb*

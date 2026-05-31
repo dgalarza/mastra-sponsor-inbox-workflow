@@ -81,6 +81,18 @@ If `TAVILY_API_KEY` is absent, Tavily steps record skipped evidence and the dete
 - `src/mastra/scorers/*` - workflow step scorer telemetry.
 - `tests/*` - deterministic helper tests.
 
+## Observability
+
+`src/mastra/index.ts` configures Mastra Observability with a storage-backed `DefaultExporter`. LibSQL remains the default application store, while DuckDB handles the observability domain for traces, logs, metrics, scores, and feedback.
+
+After running a workflow through Studio or the API, open the Studio **Traces** view or query:
+
+```bash
+curl http://localhost:4111/api/observability/traces
+```
+
+The demo registers the parent workflow, sponsor child workflow, and sponsor research workflow so nested workflow and scorer spans can resolve cleanly in traces.
+
 ## Scorers
 
 `classifyEmailStep` and `extractSponsorDetailsStep` attach custom scorers using Mastra's scorer pipeline. They are deterministic/rule-based so they can run during a live demo without another model call:
@@ -88,4 +100,4 @@ If `TAVILY_API_KEY` is absent, Tavily steps record skipped evidence and the dete
 - `classifyEmailScorer` checks category correctness, confidence calibration, grounded reason, and no overconfident routing.
 - `sponsorDetailsScorer` checks completeness/groundedness and catches invented budget, customer proof, or case studies.
 
-Studio scorer persistence depends on Mastra storage, configured in `src/mastra/index.ts`.
+Scorer results are persisted through the same observability store configured in `src/mastra/index.ts`.
