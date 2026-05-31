@@ -17,17 +17,10 @@ function classifiedEmailFrom(rawEmail: string, reason = "fixture"): ClassifiedEm
   };
 }
 
-test("sponsor workflow stops safely when sponsor intent is not explicit", async () => {
+test("sponsor workflow exposes the sponsor research sequence as workflow steps", async () => {
   const run = await sponsorTriageWorkflow.createRun({ disableScorers: true });
   const result = await run.start({
-    inputData: classifiedEmailFrom(`From: Maya Chen <maya@devflowai.dev>
-Subject: Quick hello
-
-Hi Damian,
-
-I saw your channel and wanted to introduce DevFlow AI. Would be fun to chat sometime.
-
-Maya`),
+    inputData: classifiedEmailFrom(devflowSponsorEmail),
     initialState: {
       normalizedEmail: null,
       classification: null,
@@ -36,22 +29,17 @@ Maya`),
     },
   });
 
-  if (result.status !== "success") throw new Error("Workflow failed before producing a review artifact.");
+  if (result.status !== "success") throw new Error("Workflow failed before producing a sponsor brief.");
 
-  expect(result.result.status).toBe("review_required");
-  expect(result.result.sponsorBrief).toBeNull();
-  expect(result.result.markdown).toContain("Sponsor-specific intent was not explicit enough");
+  expect(result.result.status).toBe("completed");
+  expect(result.result.sponsorBrief?.guardrailDecision.recommendation).toBe("needs_review");
+  expect(Object.keys(result.steps)).toContain("extract-sponsor-details");
+  expect(Object.keys(result.steps)).toContain("tavily-search-corroboration");
+  expect(Object.keys(result.steps)).toContain("render-sponsor-brief");
 });
 
 test("sponsor detail scorer accepts real step envelope telemetry", async () => {
-  const input = {
-    ...classifiedEmailFrom(devflowSponsorEmail),
-    sponsorIntent: {
-      isSponsorInquiry: true,
-      confidence: 0.94,
-      reason: "Email explicitly discusses partnership options.",
-    },
-  };
+  const input = classifiedEmailFrom(devflowSponsorEmail);
   const output = {
     ...input,
     sponsorDetails: {
@@ -75,16 +63,8 @@ test("sponsor detail scorer accepts real step envelope telemetry", async () => {
   expect(result.reason).toContain("Sponsor extraction is complete");
 });
 
-
 test("sponsor detail scorer catches invented commercial proof in envelope output", async () => {
-  const input = {
-    ...classifiedEmailFrom(devflowSponsorEmail),
-    sponsorIntent: {
-      isSponsorInquiry: true,
-      confidence: 0.94,
-      reason: "Email explicitly discusses partnership options.",
-    },
-  };
+  const input = classifiedEmailFrom(devflowSponsorEmail);
   const output = {
     ...input,
     sponsorDetails: {
