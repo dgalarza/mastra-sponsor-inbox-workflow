@@ -33,7 +33,7 @@ export function normalizeEmail(rawEmail: string, metadata: NormalizedEmail["meta
   const senderName = match?.[1]?.trim() || (from.includes("@") ? null : from || null);
   const senderEmail = match?.[2]?.trim() || (from.includes("@") ? from.trim() : null);
   const body = bodyLines.join("\n").trim();
-  const links = Array.from(new Set(body.match(linkPattern) ?? [])).map((url) => url.replace(/[.,;!?]+$/, ""));
+  const links = Array.from(new Set((body.match(linkPattern) ?? []).map((url) => url.replace(/[.,;!?]+$/, ""))));
 
   return {
     senderName,
