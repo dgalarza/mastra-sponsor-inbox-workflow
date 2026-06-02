@@ -1,90 +1,35 @@
 import { Agent } from "@mastra/core/agent";
 import { z } from "zod";
 
-type JsonLaneOptions<T> = {
+type JsonGenerationOptions<T> = {
+  id: string;
+  name: string;
   system: string;
   user: string;
   schema: z.ZodType<T>;
-  modelEnv: string;
-  fallback: () => T;
 };
 
-type LocalLaneKind = "classifier" | "extractor";
-
-type MastraModelConfig = string | {
-  providerId: string;
-  modelId: string;
-  url?: string;
-  apiKey?: string;
+const extractorModel = {
+  providerId: "local-extractor",
+  modelId: "mlx-community/Qwen3.6-35B-A3B-6bit",
+  url: "http://gstudio:8081/v1",
+  apiKey: "mlx",
 };
 
-function localLaneKind(modelEnv: string): LocalLaneKind {
-  return modelEnv.includes("EXTRACTOR") ? "extractor" : "classifier";
-}
+export async function generateJson<T>(options: JsonGenerationOptions<T>): Promise<T> {
+  const agent = new Agent({
+    id: options.id,
+    name: options.name,
+    instructions: options.system,
+    model: extractorModel,
+  });
 
-function localModelConfig(modelEnv: string): MastraModelConfig | null {
-  const lane = localLaneKind(modelEnv);
-  const localBaseUrl =
-    lane === "extractor"
-      ? process.env.LOCAL_EXTRACTOR_BASE_URL ?? process.env.LOCAL_MODEL_BASE_URL
-      : process.env.LOCAL_CLASSIFIER_BASE_URL ?? process.env.LOCAL_MODEL_BASE_URL;
+  const response = await agent.generate(options.user, {
+    structuredOutput: {
+      schema: options.schema,
+      jsonPromptInjection: true,
+    },
+  });
 
-  if (!localBaseUrl) return null;
-
-  const localModelEnv = lane === "extractor" ? "LOCAL_EXTRACTOR_MODEL" : "LOCAL_CLASSIFIER_MODEL";
-  const localApiKey =
-    lane === "extractor"
-      ? process.env.LOCAL_EXTRACTOR_API_KEY ?? process.env.LOCAL_MODEL_API_KEY
-      : process.env.LOCAL_CLASSIFIER_API_KEY ?? process.env.LOCAL_MODEL_API_KEY;
-
-  return {
-    providerId: `local-${lane}`,
-    modelId: process.env[localModelEnv] ?? process.env[modelEnv] ?? "local-model",
-    url: localBaseUrl,
-    apiKey: localApiKey ?? "local",
-  };
-}
-
-export function modelConfig(modelEnv: string): MastraModelConfig | null {
-  const local = localModelConfig(modelEnv);
-  if (local) return local;
-
-  if (process.env.OPENAI_API_KEY) {
-    return {
-      providerId: "openai",
-      modelId: process.env[modelEnv] ?? "gpt-4o-mini",
-      url: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
-      apiKey: process.env.OPENAI_API_KEY,
-    };
-  }
-
-  return null;
-}
-
-export async function generateJsonOrFallback<T>(options: JsonLaneOptions<T>): Promise<T> {
-  const model = modelConfig(options.modelEnv);
-  const fallback = options.fallback();
-  if (!model) return fallback;
-
-  try {
-    const agent = new Agent({
-      id: `${options.modelEnv.toLowerCase().replace(/_/g, "-")}-structured-agent`,
-      name: `${options.modelEnv} Structured Agent`,
-      instructions: options.system,
-      model,
-    });
-
-    const response = await agent.generate(options.user, {
-      structuredOutput: {
-        schema: options.schema,
-        errorStrategy: "fallback",
-        fallbackValue: fallback,
-        jsonPromptInjection: true,
-      },
-    });
-
-    return response.object ? options.schema.parse(response.object) : fallback;
-  } catch {
-    return fallback;
-  }
+  return options.schema.parse(response.object);
 }
