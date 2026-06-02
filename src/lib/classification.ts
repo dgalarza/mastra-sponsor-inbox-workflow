@@ -3,38 +3,12 @@ import { classificationSchema, type EmailClassification, type NormalizedEmail } 
 import { emailContainsAny } from "./email";
 import { routeClassification } from "./routing";
 
-type MastraModelConfig =
-  | string
-  | {
-      providerId: string;
-      modelId: string;
-      url?: string;
-      apiKey?: string;
-    };
-
-function classifierModel(): MastraModelConfig | null {
-  const localBaseUrl = process.env.LOCAL_CLASSIFIER_BASE_URL ?? process.env.LOCAL_MODEL_BASE_URL;
-
-  if (localBaseUrl) {
-    return {
-      providerId: "local-classifier",
-      modelId: process.env.LOCAL_CLASSIFIER_MODEL ?? process.env.INBOX_CLASSIFIER_MODEL ?? "local-model",
-      url: localBaseUrl,
-      apiKey: process.env.LOCAL_CLASSIFIER_API_KEY ?? process.env.LOCAL_MODEL_API_KEY ?? "local",
-    };
-  }
-
-  if (process.env.OPENAI_API_KEY) {
-    return {
-      providerId: "openai",
-      modelId: process.env.INBOX_CLASSIFIER_MODEL ?? "gpt-4o-mini",
-      url: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
-      apiKey: process.env.OPENAI_API_KEY,
-    };
-  }
-
-  return null;
-}
+const classifierModel = {
+  providerId: "local-classifier",
+  modelId: "ministral-3:8b",
+  url: "http://lianlidg:11434/v1",
+  apiKey: "ollama",
+};
 
 const classifierSystemPrompt = `Classify creator inbox email into exactly one category:
 sponsor_inquiry, client_lead, existing_client, newsletter_reply, personal, automated_noise, unknown.
@@ -52,45 +26,28 @@ Return JSON with category, confidence, and reason. Confidence must be calibrated
 
 Ground the reason in text from the email. Do not infer facts that are not present.`;
 
-const model = classifierModel();
-const emailClassifierAgent = model
-  ? new Agent({
-      id: "email-classifier-agent",
-      name: "Email Classifier Agent",
-      instructions: classifierSystemPrompt,
-      model,
-    })
-  : null;
+const emailClassifierAgent = new Agent({
+  id: "email-classifier-agent",
+  name: "Email Classifier Agent",
+  instructions: classifierSystemPrompt,
+  model: classifierModel,
+});
 
 export async function classifyEmail(email: NormalizedEmail): Promise<EmailClassification> {
-  const fallback = deterministicClassification(email);
-  const draft = emailClassifierAgent ? await classifyWithAgent(email, fallback) : fallback;
+  const response = await emailClassifierAgent.generate(JSON.stringify(email, null, 2), {
+    structuredOutput: {
+      schema: classificationSchema.omit({ routing: true }),
+      jsonPromptInjection: true,
+    },
+  });
+
+  const draft = classificationSchema.omit({ routing: true }).parse(response.object);
   const reconciled = reconcileSponsorSignals(email, draft);
 
   return {
     ...reconciled,
     routing: routeClassification(reconciled.category, reconciled.confidence),
   };
-}
-
-async function classifyWithAgent(
-  email: NormalizedEmail,
-  fallback: Omit<EmailClassification, "routing">,
-): Promise<Omit<EmailClassification, "routing">> {
-  try {
-    const response = await emailClassifierAgent?.generate(JSON.stringify(email, null, 2), {
-      structuredOutput: {
-        schema: classificationSchema.omit({ routing: true }),
-        errorStrategy: "fallback",
-        fallbackValue: fallback,
-        jsonPromptInjection: true,
-      },
-    });
-
-    return response?.object ? classificationSchema.omit({ routing: true }).parse(response.object) : fallback;
-  } catch {
-    return fallback;
-  }
 }
 
 export function reconcileSponsorSignals(
@@ -117,39 +74,4 @@ export function reconcileSponsorSignals(
   }
 
   return draft;
-}
-
-export function deterministicClassification(email: NormalizedEmail): Omit<EmailClassification, "routing"> {
-  if (
-    emailContainsAny(email, [
-      "partnership",
-      "sponsor",
-      "dedicated video",
-      "integrated mention",
-      "media kit",
-      "pricing",
-      "demo workspace",
-    ])
-  ) {
-    return {
-      category: "sponsor_inquiry",
-      confidence: 0.92,
-      reason:
-        "The email asks about a partnership, dedicated videos/integrated mentions, pricing, availability, and a media kit.",
-    };
-  }
-
-  if (emailContainsAny(email, ["unsubscribe", "no-reply", "do not reply"])) {
-    return {
-      category: "automated_noise",
-      confidence: 0.9,
-      reason: "The email contains automated/no-reply language.",
-    };
-  }
-
-  return {
-    category: "unknown",
-    confidence: 0.55,
-    reason: "The email does not contain enough clear signals for this demo classifier.",
-  };
 }
