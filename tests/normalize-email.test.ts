@@ -41,6 +41,18 @@ describe("normalizeEmail", () => {
     });
   });
 
+  test("handles a collapsed one-line pasted email", () => {
+    const rawEmail = devflowSponsorEmail.replace(/\n+/g, "  ");
+    const email = normalizeEmail(rawEmail, { mailbox: "damian@damiangalarza.com" });
+
+    expect(email.senderName).toBe("Maya Chen");
+    expect(email.senderEmail).toBe("maya@devflowai.dev");
+    expect(email.subject).toBe("Partnership with DevFlow AI?");
+    expect(email.body).toContain("Hi Damian");
+    expect(email.links).toEqual(["https://devflow-blueprint.lovable.app/"]);
+    expect(email.metadata).toEqual({ mailbox: "damian@damiangalarza.com" });
+  });
+
   test("falls back safely when common headers are missing", () => {
     const email = normalizeEmail("From: no-reply@example.com\n\nBody only");
 
