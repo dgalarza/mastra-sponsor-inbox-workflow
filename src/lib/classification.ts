@@ -3,14 +3,10 @@ import { classificationSchema, type EmailClassification, type NormalizedEmail } 
 import { emailContainsAny } from "./email";
 import { routeClassification } from "./routing";
 
-const classifierModel = {
-  providerId: "local-classifier",
-  modelId: "ministral-3:8b",
-  url: "http://lianlidg:11434/v1",
-  apiKey: "ollama",
-};
-
-const classifierSystemPrompt = `Classify creator inbox email into exactly one category:
+const emailClassifierAgent = new Agent({
+  id: "email-classifier-agent",
+  name: "Email Classifier Agent",
+  instructions: `Classify creator inbox email into exactly one category:
 sponsor_inquiry, client_lead, existing_client, newsletter_reply, personal, automated_noise, unknown.
 
 Category boundary:
@@ -24,13 +20,13 @@ Return JSON with category, confidence, and reason. Confidence must be calibrated
 - 0.75-0.85 if routeable but worth a warning
 - above 0.85 only when the email clearly belongs to that category
 
-Ground the reason in text from the email. Do not infer facts that are not present.`;
-
-const emailClassifierAgent = new Agent({
-  id: "email-classifier-agent",
-  name: "Email Classifier Agent",
-  instructions: classifierSystemPrompt,
-  model: classifierModel,
+Ground the reason in text from the email. Do not infer facts that are not present.`,
+  model: {
+    providerId: "local-classifier",
+    modelId: "ministral-3:8b",
+    url: "http://lianlidg:11434/v1",
+    apiKey: "ollama",
+  },
 });
 
 export async function classifyEmail(email: NormalizedEmail): Promise<EmailClassification> {
