@@ -5,6 +5,8 @@ import type { ClassifiedEmail } from "../src/lib/schemas";
 import { sponsorDetailsScorer } from "../src/mastra/scorers/sponsor-details.scorer";
 import { sponsorTriageWorkflow } from "../src/mastra/workflows/sponsor-triage.workflow";
 
+process.env.TAVILY_API_KEY = "";
+
 function classifiedEmailFrom(rawEmail: string, reason = "fixture"): ClassifiedEmail {
   return {
     normalizedEmail: normalizeEmail(rawEmail),
@@ -36,7 +38,7 @@ test("sponsor workflow exposes the sponsor research sequence as workflow steps",
   expect(Object.keys(result.steps)).toContain("extract-sponsor-details");
   expect(Object.keys(result.steps)).toContain("tavily-search-corroboration");
   expect(Object.keys(result.steps)).toContain("render-sponsor-brief");
-});
+}, 15_000);
 
 test("sponsor detail scorer accepts real step envelope telemetry", async () => {
   const input = classifiedEmailFrom(devflowSponsorEmail);

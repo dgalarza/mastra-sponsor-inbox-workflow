@@ -21,6 +21,8 @@ export const rawEmailInputSchema = z.object({
   mailbox: z.string().optional(),
 });
 
+export type RawEmailInput = z.infer<typeof rawEmailInputSchema>;
+
 export const normalizedEmailSchema = z.object({
   senderName: z.string().nullable(),
   senderEmail: z.string().nullable(),

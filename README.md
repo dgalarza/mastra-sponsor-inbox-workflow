@@ -73,6 +73,7 @@ If `TAVILY_API_KEY` is absent, Tavily steps record skipped evidence and the dete
 ## Important Files
 
 - `src/mastra/workflows/inbox-triage.workflow.ts` - parent routing workflow.
+- `src/mastra/agents/sponsor-inbox.agent.ts` - lightweight agent that delegates email triage to the workflow.
 - `src/mastra/workflows/sponsor-triage.workflow.ts` - nested sponsor workflow.
 - `src/mastra/steps/*` - one readable teaching step per file.
 - `src/lib/scoring.ts` - deterministic recommendation policy.
@@ -80,6 +81,12 @@ If `TAVILY_API_KEY` is absent, Tavily steps record skipped evidence and the dete
 - `src/renderers/sponsor-brief.ts` - Studio-friendly Markdown report.
 - `src/mastra/scorers/*` - workflow step scorer telemetry.
 - `tests/*` - deterministic helper tests.
+
+## Lightweight Agent
+
+The repo also registers `sponsorInboxAgent` as a small conversational entrypoint. The agent has one tool, `runInboxTriageWorkflowTool`, which runs the parent workflow and returns the same JSON plus Markdown brief you see in Studio.
+
+This keeps the demo production-oriented: the agent can talk to a user, but the classification, routing, research, scoring, guardrails, and reply drafting still live in observable workflow steps.
 
 ## Observability
 
