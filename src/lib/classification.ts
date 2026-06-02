@@ -1,7 +1,40 @@
+import { Agent } from "@mastra/core/agent";
 import { classificationSchema, type EmailClassification, type NormalizedEmail } from "./schemas";
 import { emailContainsAny } from "./email";
-import { generateJsonOrFallback } from "./model-lanes";
 import { routeClassification } from "./routing";
+
+type MastraModelConfig =
+  | string
+  | {
+      providerId: string;
+      modelId: string;
+      url?: string;
+      apiKey?: string;
+    };
+
+function classifierModel(): MastraModelConfig | null {
+  const localBaseUrl = process.env.LOCAL_CLASSIFIER_BASE_URL ?? process.env.LOCAL_MODEL_BASE_URL;
+
+  if (localBaseUrl) {
+    return {
+      providerId: "local-classifier",
+      modelId: process.env.LOCAL_CLASSIFIER_MODEL ?? process.env.INBOX_CLASSIFIER_MODEL ?? "local-model",
+      url: localBaseUrl,
+      apiKey: process.env.LOCAL_CLASSIFIER_API_KEY ?? process.env.LOCAL_MODEL_API_KEY ?? "local",
+    };
+  }
+
+  if (process.env.OPENAI_API_KEY) {
+    return {
+      providerId: "openai",
+      modelId: process.env.INBOX_CLASSIFIER_MODEL ?? "gpt-4o-mini",
+      url: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
+      apiKey: process.env.OPENAI_API_KEY,
+    };
+  }
+
+  return null;
+}
 
 const classifierSystemPrompt = `Classify creator inbox email into exactly one category:
 sponsor_inquiry, client_lead, existing_client, newsletter_reply, personal, automated_noise, unknown.
@@ -19,20 +52,45 @@ Return JSON with category, confidence, and reason. Confidence must be calibrated
 
 Ground the reason in text from the email. Do not infer facts that are not present.`;
 
+const model = classifierModel();
+const emailClassifierAgent = model
+  ? new Agent({
+      id: "email-classifier-agent",
+      name: "Email Classifier Agent",
+      instructions: classifierSystemPrompt,
+      model,
+    })
+  : null;
+
 export async function classifyEmail(email: NormalizedEmail): Promise<EmailClassification> {
-  const draft = await generateJsonOrFallback({
-    system: classifierSystemPrompt,
-    user: JSON.stringify(email, null, 2),
-    schema: classificationSchema.omit({ routing: true }),
-    modelEnv: "INBOX_CLASSIFIER_MODEL",
-    fallback: () => deterministicClassification(email),
-  });
+  const fallback = deterministicClassification(email);
+  const draft = emailClassifierAgent ? await classifyWithAgent(email, fallback) : fallback;
   const reconciled = reconcileSponsorSignals(email, draft);
 
   return {
     ...reconciled,
     routing: routeClassification(reconciled.category, reconciled.confidence),
   };
+}
+
+async function classifyWithAgent(
+  email: NormalizedEmail,
+  fallback: Omit<EmailClassification, "routing">,
+): Promise<Omit<EmailClassification, "routing">> {
+  try {
+    const response = await emailClassifierAgent?.generate(JSON.stringify(email, null, 2), {
+      structuredOutput: {
+        schema: classificationSchema.omit({ routing: true }),
+        errorStrategy: "fallback",
+        fallbackValue: fallback,
+        jsonPromptInjection: true,
+      },
+    });
+
+    return response?.object ? classificationSchema.omit({ routing: true }).parse(response.object) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 export function reconcileSponsorSignals(
