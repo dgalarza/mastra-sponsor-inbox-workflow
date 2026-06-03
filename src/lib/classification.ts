@@ -1,4 +1,5 @@
 import { Agent } from "@mastra/core/agent";
+import { getClassifierModel } from "./model-lanes";
 import { classificationSchema, type EmailClassification, type NormalizedEmail } from "./schemas";
 import { emailContainsAny } from "./email";
 import { routeClassification } from "./routing";
@@ -21,12 +22,7 @@ Return JSON with category, confidence, and reason. Confidence must be calibrated
 - above 0.85 only when the email clearly belongs to that category
 
 Ground the reason in text from the email. Do not infer facts that are not present.`,
-  model: {
-    providerId: "local-classifier",
-    modelId: "ministral-3:8b",
-    url: "http://lianlidg:11434/v1",
-    apiKey: "ollama",
-  },
+  model: getClassifierModel(),
 });
 
 export async function classifyEmail(email: NormalizedEmail): Promise<EmailClassification> {

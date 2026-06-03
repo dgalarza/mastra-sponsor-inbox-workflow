@@ -1,4 +1,5 @@
 import { Agent } from "@mastra/core/agent";
+import { getExtractorModel } from "./model-lanes";
 import { sponsorDetailsSchema, type NormalizedEmail, type SponsorDetails } from "./schemas";
 
 const sponsorDetailsExtractorAgent = new Agent({
@@ -12,12 +13,7 @@ Rules:
 - Do not invent customers, case studies, security proof, or funding.
 - Put missing commercial/proof information in missingInformation.
 - Keep notableClaims as sponsor-provided claims, not verified facts.`,
-  model: {
-    providerId: "local-classifier",
-    modelId: "ministral-3:8b",
-    url: "http://lianlidg:11434/v1",
-    apiKey: "ollama",
-  },
+  model: getExtractorModel(),
 });
 
 export async function extractSponsorDetails(email: NormalizedEmail): Promise<SponsorDetails> {

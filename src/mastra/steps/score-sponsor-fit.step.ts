@@ -14,6 +14,10 @@ export const scoreSponsorFitStep = createStep({
   outputSchema: scoredSponsorEnvelopeSchema,
   execute: async ({ inputData }) => ({
     ...inputData,
-    scores: scoreSponsorFit(inputData.sponsorDetails, inputData.sponsorProvidedEvidence, inputData.externalCorroboration),
+    scores: await scoreSponsorFit(
+      inputData.sponsorDetails,
+      inputData.sponsorProvidedEvidence,
+      inputData.externalCorroboration,
+    ),
   }),
 });

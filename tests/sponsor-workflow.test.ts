@@ -24,25 +24,38 @@ function classifiedEmailFrom(rawEmail: string, reason = "fixture"): ClassifiedEm
 }
 
 test("sponsor workflow exposes the sponsor research sequence as workflow steps", async () => {
-  globalThis.fetch = (async () => {
+  globalThis.fetch = (async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    const requestBody = JSON.parse(String(init?.body ?? "{}"));
+    const messageText = JSON.stringify(requestBody.messages ?? []);
+    const content = messageText.includes("Score a sponsor opportunity")
+      ? {
+          audienceRelevance: 5,
+          productCredibility: 3,
+          contentNaturalness: 5,
+          reputationSafety: 3,
+          commercialClarity: 2,
+          rationale: "The email shows strong audience fit, but commercial clarity and independent proof remain limited.",
+        }
+      : {
+          brand: "DevFlow AI",
+          sender: { name: "Maya Chen", email: "maya@devflowai.dev", role: "Partnerships Lead" },
+          productCategory: "AI engineering workflow platform",
+          sponsorIntent: "Explore a paid creator partnership with dedicated videos or integrated mentions.",
+          deliverables: ["dedicated videos", "integrated mentions"],
+          budgetStatus: "not_provided",
+          timelineStatus: "not_provided",
+          demoAccess: "offered",
+          url: "https://devflow-blueprint.lovable.app/",
+          notableClaims: ["Turns product specs into implementation plans."],
+          missingInformation: ["Budget range", "Campaign timeline", "Customer proof"],
+        };
+
     return new Response(
       JSON.stringify({
         choices: [
           {
             message: {
-              content: JSON.stringify({
-                brand: "DevFlow AI",
-                sender: { name: "Maya Chen", email: "maya@devflowai.dev", role: "Partnerships Lead" },
-                productCategory: "AI engineering workflow platform",
-                sponsorIntent: "Explore a paid creator partnership with dedicated videos or integrated mentions.",
-                deliverables: ["dedicated videos", "integrated mentions"],
-                budgetStatus: "not_provided",
-                timelineStatus: "not_provided",
-                demoAccess: "offered",
-                url: "https://devflow-blueprint.lovable.app/",
-                notableClaims: ["Turns product specs into implementation plans."],
-                missingInformation: ["Budget range", "Campaign timeline", "Customer proof"],
-              }),
+              content: JSON.stringify(content),
             },
           },
         ],

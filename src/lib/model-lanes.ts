@@ -9,19 +9,30 @@ type JsonGenerationOptions<T> = {
   schema: z.ZodType<T>;
 };
 
-const extractorModel = {
-  providerId: "local-extractor",
-  modelId: "mlx-community/Qwen3.6-35B-A3B-6bit",
-  url: "http://gstudio:8081/v1",
-  apiKey: "mlx",
-};
+export function getClassifierModel() {
+  return {
+    providerId: "local-classifier",
+    modelId: process.env.LOCAL_CLASSIFIER_MODEL ?? "ministral-3:8b",
+    url: process.env.LOCAL_CLASSIFIER_BASE_URL ?? process.env.LOCAL_MODEL_BASE_URL ?? "http://localhost:11434/v1",
+    apiKey: process.env.LOCAL_CLASSIFIER_API_KEY ?? process.env.LOCAL_MODEL_API_KEY ?? "ollama",
+  };
+}
+
+export function getExtractorModel() {
+  return {
+    providerId: "local-extractor",
+    modelId: process.env.LOCAL_EXTRACTOR_MODEL ?? "mlx-community/Qwen3.6-35B-A3B-6bit",
+    url: process.env.LOCAL_EXTRACTOR_BASE_URL ?? process.env.LOCAL_MODEL_BASE_URL ?? "http://localhost:8081/v1",
+    apiKey: process.env.LOCAL_EXTRACTOR_API_KEY ?? process.env.LOCAL_MODEL_API_KEY ?? "mlx",
+  };
+}
 
 export async function generateJson<T>(options: JsonGenerationOptions<T>): Promise<T> {
   const agent = new Agent({
     id: options.id,
     name: options.name,
     instructions: options.system,
-    model: extractorModel,
+    model: getExtractorModel(),
   });
 
   const response = await agent.generate(options.user, {
