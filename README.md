@@ -2,6 +2,8 @@
 
 Reference repo for the video **Stop Making One Agent Handle the Whole Inbox**.
 
+Video: [https://youtu.be/wxCiVB99kso](https://youtu.be/wxCiVB99kso)
+
 This project shows a production-shaped pattern for agent systems:
 
 - use a workflow for routing, visibility, and guardrails
